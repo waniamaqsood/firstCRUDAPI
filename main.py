@@ -54,3 +54,13 @@ def update_item(item_id: int, updated_item: ItemCreate):
     item["title"] = updated_item.title
     item["done"] = updated_item.done
     return item
+
+@app.delete("/api/tasks/{item_id}")
+def delete_item(item_id: int):
+    global task_db
+    item = next((i for i in task_db if i["id"] == item_id), None)
+    if not item:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    task_db = [i for i in task_db if i["id"] != item_id]
+    return {"message": "Task successfully deleted"}
