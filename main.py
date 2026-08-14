@@ -31,10 +31,16 @@ def read_root():
 def get_all_tasks():
     return task_db
 
-# 2. READ ONE
 @app.get("/api/tasks/{id}", response_model=Item)
 def get_item(id: int):
     item = next((i for i in task_db if i["id"] == id), None)
     if not item:
         raise HTTPException(status_code=404, detail="Task not found")
     return item
+
+@app.post("/api/tasks", response_model=Item, status_code=status.HTTP_201_CREATED)
+def create_item(item: ItemCreate):
+    new_id = max([i["id"] for i in task_db], default=0) + 1
+    new_item = {"id": new_id, "title": item.title, "done": item.done}
+    task_db.append(new_item)
+    return new_item
