@@ -26,3 +26,15 @@ task_db = [
 @app.get("/") 
 def read_root():
     return { "name": "Task API", "version": "1.0", "endpoints": ["/api/tasks"] }
+
+@app.get("/api/tasks", response_model=List[Item])
+def get_all_tasks():
+    return task_db
+
+# 2. READ ONE
+@app.get("/api/tasks/{id}", response_model=Item)
+def get_item(id: int):
+    item = next((i for i in task_db if i["id"] == id), None)
+    if not item:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return item
