@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Response
 from pydantic import BaseModel
 from typing import List
 
@@ -8,14 +8,17 @@ app = FastAPI(
     version="1.0.0"
 )
 
+
 class Item(BaseModel):
     id: int
-    title: str 
+    title: str
     done: bool
 
+
 class ItemCreate(BaseModel):
-    title: str 
+    title: str
     done: bool
+
 
 task_db = [
     {"id": 1, "title": "Task One", "done": True},
@@ -23,7 +26,8 @@ task_db = [
     {"id": 3, "title": "Task Three", "done": True},
 ]
 
-@app.get("/") 
+
+@app.get("/")
 def read_root():
     return {
         "name": "Task API",
@@ -31,43 +35,84 @@ def read_root():
         "endpoints": ["/tasks"]
     }
 
+
 @app.get("/tasks", response_model=List[Item])
 def get_all_tasks():
     return task_db
 
+
 @app.get("/tasks/{id}", response_model=Item)
 def get_item(id: int):
     item = next((i for i in task_db if i["id"] == id), None)
+
     if not item:
-        raise HTTPException(status_code=404, detail="Task not found")
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found"
+        )
+
     return item
 
-@app.post("/tasks", response_model=Item, status_code=status.HTTP_201_CREATED)
+
+@app.post(
+    "/tasks",
+    response_model=Item,
+    status_code=status.HTTP_201_CREATED
+)
 def create_item(item: ItemCreate):
     new_id = max([i["id"] for i in task_db], default=0) + 1
-    new_item = {"id": new_id, "title": item.title, "done": item.done}
+
+    new_item = {
+        "id": new_id,
+        "title": item.title,
+        "done": item.done
+    }
+
     task_db.append(new_item)
+
     return new_item
+
 
 @app.put("/tasks/{item_id}", response_model=Item)
 def update_item(item_id: int, updated_item: ItemCreate):
     item = next((i for i in task_db if i["id"] == item_id), None)
+
     if not item:
-        raise HTTPException(status_code=404, detail="Task not found")
-    
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found"
+        )
+
     item["title"] = updated_item.title
     item["done"] = updated_item.done
+
     return item
 
-@app.delete("/tasks/{item_id}")
+
+@app.delete(
+    "/tasks/{item_id}",
+    status_code=status.HTTP_204_NO_CONTENT
+)
 def delete_item(item_id: int):
     global task_db
+
     item = next((i for i in task_db if i["id"] == item_id), None)
+
     if not item:
-        raise HTTPException(status_code=404, detail="Task not found")
-    
-    task_db = [i for i in task_db if i["id"] != item_id]
-    return {"message": "Task successfully deleted"}
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found"
+        )
+
+    task_db = [
+        i for i in task_db
+        if i["id"] != item_id
+    ]
+
+    return Response(
+        status_code=status.HTTP_204_NO_CONTENT
+    )
+
 
 @app.post("/reset")
 def db_reset():
