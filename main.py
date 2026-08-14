@@ -25,27 +25,31 @@ task_db = [
 
 @app.get("/") 
 def read_root():
-    return { "name": "Task API", "version": "1.0", "endpoints": ["/api/tasks"] }
+    return {
+        "name": "Task API",
+        "version": "1.0",
+        "endpoints": ["/tasks"]
+    }
 
-@app.get("/api/tasks", response_model=List[Item])
+@app.get("/tasks", response_model=List[Item])
 def get_all_tasks():
     return task_db
 
-@app.get("/api/tasks/{id}", response_model=Item)
+@app.get("/tasks/{id}", response_model=Item)
 def get_item(id: int):
     item = next((i for i in task_db if i["id"] == id), None)
     if not item:
         raise HTTPException(status_code=404, detail="Task not found")
     return item
 
-@app.post("/api/tasks", response_model=Item, status_code=status.HTTP_201_CREATED)
+@app.post("/tasks", response_model=Item, status_code=status.HTTP_201_CREATED)
 def create_item(item: ItemCreate):
     new_id = max([i["id"] for i in task_db], default=0) + 1
     new_item = {"id": new_id, "title": item.title, "done": item.done}
     task_db.append(new_item)
     return new_item
 
-@app.put("/api/tasks/{item_id}", response_model=Item)
+@app.put("/tasks/{item_id}", response_model=Item)
 def update_item(item_id: int, updated_item: ItemCreate):
     item = next((i for i in task_db if i["id"] == item_id), None)
     if not item:
@@ -55,7 +59,7 @@ def update_item(item_id: int, updated_item: ItemCreate):
     item["done"] = updated_item.done
     return item
 
-@app.delete("/api/tasks/{item_id}")
+@app.delete("/tasks/{item_id}")
 def delete_item(item_id: int):
     global task_db
     item = next((i for i in task_db if i["id"] == item_id), None)
