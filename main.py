@@ -1,13 +1,14 @@
-from fastapi import FastAPI, HTTPException, status, Response
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, status, Response, Request
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, field_validator
 from typing import List
 
 app = FastAPI(
-    title="FastAPI CRUD API",
-    description="A simple CRUD API",
+    title="Task API",
+    description="A simple in-memory CRUD API",
     version="1.0.0"
 )
-
 
 class Item(BaseModel):
     id: int
@@ -19,6 +20,12 @@ class ItemCreate(BaseModel):
     title: str
     done: bool
 
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str):
+        if not value.strip():
+            raise ValueError("title cannot be empty")
+        return value
 
 task_db = [
     {"id": 1, "title": "Task One", "done": True},
@@ -27,12 +34,44 @@ task_db = [
 ]
 
 
+# -------------------------
+# Error handling
+# -------------------------
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+    request: Request,
+    exc: RequestValidationError
+):
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={
+            "error": "Invalid request body"
+        }
+    )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(
+    request: Request,
+    exc: HTTPException
+):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": exc.detail
+        }
+    )
+
 @app.get("/")
 def read_root():
     return {
         "name": "Task API",
         "version": "1.0",
-        "endpoints": ["/tasks"]
+        "endpoints": [
+            "/tasks",
+            "/tasks/{id}"
+        ]
     }
 
 
@@ -43,11 +82,15 @@ def get_all_tasks():
 
 @app.get("/tasks/{id}", response_model=Item)
 def get_item(id: int):
-    item = next((i for i in task_db if i["id"] == id), None)
 
-    if not item:
+    item = next(
+        (i for i in task_db if i["id"] == id),
+        None
+    )
+
+    if item is None:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found"
         )
 
@@ -60,7 +103,11 @@ def get_item(id: int):
     status_code=status.HTTP_201_CREATED
 )
 def create_item(item: ItemCreate):
-    new_id = max([i["id"] for i in task_db], default=0) + 1
+
+    new_id = max(
+        [i["id"] for i in task_db],
+        default=0
+    ) + 1
 
     new_item = {
         "id": new_id,
@@ -74,12 +121,19 @@ def create_item(item: ItemCreate):
 
 
 @app.put("/tasks/{item_id}", response_model=Item)
-def update_item(item_id: int, updated_item: ItemCreate):
-    item = next((i for i in task_db if i["id"] == item_id), None)
+def update_item(
+    item_id: int,
+    updated_item: ItemCreate
+):
 
-    if not item:
+    item = next(
+        (i for i in task_db if i["id"] == item_id),
+        None
+    )
+
+    if item is None:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found"
         )
 
@@ -88,19 +142,22 @@ def update_item(item_id: int, updated_item: ItemCreate):
 
     return item
 
-
 @app.delete(
     "/tasks/{item_id}",
     status_code=status.HTTP_204_NO_CONTENT
 )
 def delete_item(item_id: int):
+
     global task_db
 
-    item = next((i for i in task_db if i["id"] == item_id), None)
+    item = next(
+        (i for i in task_db if i["id"] == item_id),
+        None
+    )
 
-    if not item:
+    if item is None:
         raise HTTPException(
-            status_code=404,
+            status_code=status.HTTP_404_NOT_FOUND,
             detail="Task not found"
         )
 
@@ -111,14 +168,4 @@ def delete_item(item_id: int):
 
     return Response(
         status_code=status.HTTP_204_NO_CONTENT
-    )
-
-
-@app.post("/reset")
-def db_reset():
-    task_db.clear()
-    task_db.extend(
-        {"id": 1, "title": "Task One", "done": True},
-        {"id": 2, "title": "Task Two", "done": False},
-        {"id": 3, "title": "Task Three", "done": True},
     )
