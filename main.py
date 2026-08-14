@@ -44,3 +44,13 @@ def create_item(item: ItemCreate):
     new_item = {"id": new_id, "title": item.title, "done": item.done}
     task_db.append(new_item)
     return new_item
+
+@app.put("/api/tasks/{item_id}", response_model=Item)
+def update_item(item_id: int, updated_item: ItemCreate):
+    item = next((i for i in task_db if i["id"] == item_id), None)
+    if not item:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    item["title"] = updated_item.title
+    item["done"] = updated_item.done
+    return item
