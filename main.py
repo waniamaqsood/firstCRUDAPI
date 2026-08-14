@@ -64,3 +64,12 @@ def delete_item(item_id: int):
     
     task_db = [i for i in task_db if i["id"] != item_id]
     return {"message": "Task successfully deleted"}
+
+@app.post("/reset")
+def db_reset():
+    task_db.clear()
+    task_db.extend(
+        {"id": 1, "title": "Task One", "done": True},
+        {"id": 2, "title": "Task Two", "done": False},
+        {"id": 3, "title": "Task Three", "done": True},
+    )
