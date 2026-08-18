@@ -197,3 +197,32 @@ def delete_item(id: int):
         )
 
     connection.close()
+
+# -------------------------
+# GET task by done status
+# -------------------------
+
+@app.get("/tasks")
+def get_item(done: bool):
+
+    connection = sqlite3.connect("tasks.db")
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT id, title, done
+        FROM tasks
+        WHERE done = ?
+    """, (done,))
+
+    rows = cursor.fetchall()
+
+    connection.close()
+
+    if not rows:
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found"
+        )
+
+    return rows
+
