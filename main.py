@@ -131,3 +131,38 @@ def create_item(title: str, done: bool):
         "title": title,
         "done": done
     }
+
+
+# -------------------------
+# UPDATE task
+# -------------------------
+
+@app.put("/tasks/{id}")
+def update_item(id: int, title: str, done: bool):
+
+    connection = sqlite3.connect("tasks.db")
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        UPDATE tasks
+        SET title = ?, done = ?
+        WHERE id = ?
+    """, (title, done, id))
+
+    connection.commit()
+
+    if cursor.rowcount == 0:
+        connection.close()
+
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found"
+        )
+
+    connection.close()
+
+    return {
+        "id": id,
+        "title": title,
+        "done": done
+    }
