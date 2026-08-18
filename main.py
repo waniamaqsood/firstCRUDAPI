@@ -105,4 +105,29 @@ def get_item(id: int):
 
     return row
 
+# -------------------------
+# CREATE task
+# -------------------------
 
+@app.post("/tasks", status_code=status.HTTP_201_CREATED)
+def create_item(title: str, done: bool):
+
+    connection = sqlite3.connect("tasks.db")
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        INSERT INTO tasks (title, done)
+        VALUES (?, ?)
+    """, (title, done))
+
+    connection.commit()
+
+    new_id = cursor.lastrowid
+
+    connection.close()
+
+    return {
+        "id": new_id,
+        "title": title,
+        "done": done
+    }
