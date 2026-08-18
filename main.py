@@ -166,3 +166,34 @@ def update_item(id: int, title: str, done: bool):
         "title": title,
         "done": done
     }
+
+
+# -------------------------
+# DELETE task
+# -------------------------
+
+@app.delete(
+    "/tasks/{id}",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+def delete_item(id: int):
+
+    connection = sqlite3.connect("tasks.db")
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        DELETE FROM tasks
+        WHERE id = ?
+    """, (id,))
+
+    connection.commit()
+
+    if cursor.rowcount == 0:
+        connection.close()
+
+        raise HTTPException(
+            status_code=404,
+            detail="Task not found"
+        )
+
+    connection.close()
