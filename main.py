@@ -1,38 +1,13 @@
-from fastapi import FastAPI, HTTPException, status, Response, Request
+from fastapi import FastAPI, HTTPException, status, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, field_validator
-from typing import List
+import sqlite3
 
 app = FastAPI(
     title="Task API",
-    description="A simple in-memory CRUD API",
+    description="A simple SQLite CRUD API",
     version="1.0.0"
 )
-
-class Item(BaseModel):
-    id: int
-    title: str
-    done: bool
-
-
-class ItemCreate(BaseModel):
-    title: str
-    done: bool
-
-    @field_validator("title")
-    @classmethod
-    def validate_title(cls, value: str):
-        if not value.strip():
-            raise ValueError("title cannot be empty")
-        return value
-
-task_db = [
-    {"id": 1, "title": "Task One", "done": True},
-    {"id": 2, "title": "Task Two", "done": False},
-    {"id": 3, "title": "Task Three", "done": True},
-]
-
 
 # -------------------------
 # Error handling
@@ -63,6 +38,11 @@ async def http_exception_handler(
         }
     )
 
+
+# -------------------------
+# Root
+# -------------------------
+
 @app.get("/")
 def read_root():
     return {
@@ -75,97 +55,54 @@ def read_root():
     }
 
 
-@app.get("/tasks", response_model=List[Item])
+# -------------------------
+# GET all tasks
+# -------------------------
+
+@app.get("/tasks")
 def get_all_tasks():
-    return task_db
+
+    connection = sqlite3.connect("tasks.db")
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT id, title, done
+        FROM tasks
+    """)
+
+    rows = cursor.fetchall()
+
+    connection.close()
+
+    return rows
 
 
-@app.get("/tasks/{id}", response_model=Item)
+# -------------------------
+# GET one task
+# -------------------------
+
+@app.get("/tasks/{id}")
 def get_item(id: int):
 
-    item = next(
-        (i for i in task_db if i["id"] == id),
-        None
-    )
+    connection = sqlite3.connect("tasks.db")
+    cursor = connection.cursor()
 
-    if item is None:
+    cursor.execute("""
+        SELECT id, title, done
+        FROM tasks
+        WHERE id = ?
+    """, (id,))
+
+    row = cursor.fetchone()
+
+    connection.close()
+
+    if row is None:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=404,
             detail="Task not found"
         )
 
-    return item
+    return row
 
 
-@app.post(
-    "/tasks",
-    response_model=Item,
-    status_code=status.HTTP_201_CREATED
-)
-def create_item(item: ItemCreate):
-
-    new_id = max(
-        [i["id"] for i in task_db],
-        default=0
-    ) + 1
-
-    new_item = {
-        "id": new_id,
-        "title": item.title,
-        "done": item.done
-    }
-
-    task_db.append(new_item)
-
-    return new_item
-
-
-@app.put("/tasks/{item_id}", response_model=Item)
-def update_item(
-    item_id: int,
-    updated_item: ItemCreate
-):
-
-    item = next(
-        (i for i in task_db if i["id"] == item_id),
-        None
-    )
-
-    if item is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found"
-        )
-
-    item["title"] = updated_item.title
-    item["done"] = updated_item.done
-
-    return item
-
-@app.delete(
-    "/tasks/{item_id}",
-    status_code=status.HTTP_204_NO_CONTENT
-)
-def delete_item(item_id: int):
-
-    global task_db
-
-    item = next(
-        (i for i in task_db if i["id"] == item_id),
-        None
-    )
-
-    if item is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Task not found"
-        )
-
-    task_db = [
-        i for i in task_db
-        if i["id"] != item_id
-    ]
-
-    return Response(
-        status_code=status.HTTP_204_NO_CONTENT
-    )
